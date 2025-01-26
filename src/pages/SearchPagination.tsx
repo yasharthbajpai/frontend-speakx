@@ -28,28 +28,25 @@ const SearchWithPagination = () => {
   }
 
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [searchTerm, setSearch] = useState("");
+  const [pageNumber, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
-  const [limit, setLimit] = useState(5);
+  const [itemsPerPage, setLimit] = useState(5);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
     fetchQuestions();
-  }, [page, search, limit]);
+  }, [pageNumber, searchTerm, itemsPerPage]);
 
   const fetchQuestions = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(
-        "https://backend-speakx.onrender.com/api/questions",
-        {
-          params: { page, limit, search },
-        }
-      );
-      setQuestions(response.data.questions || []);
-      setTotalPages(response.data.total);
+      const response = await axios.get(`https://speakx-bdass.onrender.com/api/assessments`, {
+        params: { pageNumber, itemsPerPage, searchTerm },
+      });
+      setQuestions(response.data.assessments || []);
+      setTotalPages(response.data.totalCount);
       setLoading(false);
     } catch (e) {
       console.error("Error fetching questions:", e);
@@ -69,11 +66,11 @@ const SearchWithPagination = () => {
   };
 
   const highlightText = (text: string) => {
-    if (!search) return text;
-    const regex = new RegExp(`(${search})`, "gi");
+    if (!searchTerm) return text;
+    const regex = new RegExp(`(${searchTerm})`, "gi");
     const parts = text.split(regex);
     return parts.map((part, index) =>
-      part.toLowerCase() === search.toLowerCase() ? (
+      part.toLowerCase() === searchTerm.toLowerCase() ? (
         <span key={index} className="bg-yellow-200 px-1 rounded">
           {part}
         </span>
@@ -83,31 +80,49 @@ const SearchWithPagination = () => {
     );
   };
 
-
-  
   return (
     <div className="p-8 max-w-5xl mx-auto">
       <div className="bg-gray-900 rounded-xl shadow-2xl p-8 border border-gray-800">
         {/* Search Header */}
         <div className="mb-8">
-          <h2 className="text-2xl font-semibold text-gray-100 mb-4">Search Questions</h2>
+          <h2 className="text-2xl font-semibold text-gray-100 mb-4">
+            Search Questions
+          </h2>
           <div className="flex items-center gap-4">
             <Input
               type="text"
               placeholder="Search questions..."
-              value={search}
+              value={searchTerm}
               onChange={handleSearchChange}
               className="flex-1 bg-gray-800 border-2 border-gray-700 rounded-lg focus:border-purple-500 
                         transition-colors h-12 px-4 text-gray-100 placeholder-gray-400"
             />
-            <Select value={limit.toString()} onValueChange={handleLimitChange}>
+            <Select
+              value={itemsPerPage.toString()}
+              onValueChange={handleLimitChange}
+            >
               <SelectTrigger className="w-32 bg-gray-800 border-2 border-gray-700 h-12 text-gray-100">
-                {limit} per page
+                {itemsPerPage} per page
               </SelectTrigger>
               <SelectContent className="bg-gray-800 border border-gray-700">
-                <SelectItem value="5" className="text-gray-100 hover:bg-gray-700">5 per page</SelectItem>
-                <SelectItem value="10" className="text-gray-100 hover:bg-gray-700">10 per page</SelectItem>
-                <SelectItem value="15" className="text-gray-100 hover:bg-gray-700">15 per page</SelectItem>
+                <SelectItem
+                  value="5"
+                  className="text-gray-100 hover:bg-gray-700"
+                >
+                  5 per page
+                </SelectItem>
+                <SelectItem
+                  value="10"
+                  className="text-gray-100 hover:bg-gray-700"
+                >
+                  10 per page
+                </SelectItem>
+                <SelectItem
+                  value="15"
+                  className="text-gray-100 hover:bg-gray-700"
+                >
+                  15 per page
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -117,20 +132,25 @@ const SearchWithPagination = () => {
         <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
           <Table className="min-h-[36rem]">
             <TableCaption className="text-sm text-gray-400 py-4 bg-gray-900">
-              Showing page {questions.length === 0 ? 0 : page} of {Math.ceil(totalPages / limit)}
+              Showing page {questions.length === 0 ? 0 : pageNumber} of{" "}
+              {Math.ceil(totalPages / itemsPerPage)}
             </TableCaption>
             <TableHeader>
               <TableRow className="bg-gray-900 border-b border-gray-700">
-                <TableHead className="text-left font-bold text-gray-300 px-6 py-4">Title</TableHead>
-                <TableHead className="text-right font-bold text-gray-300 px-6 py-4">Type</TableHead>
+                <TableHead className="text-left font-bold text-gray-300 px-6 py-4">
+                  Title
+                </TableHead>
+                <TableHead className="text-right font-bold text-gray-300 px-6 py-4">
+                  Type
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {error ? (
                 <TableRow>
                   <TableCell colSpan={2} className="p-6">
-                    <Alert 
-                      severity="warning" 
+                    <Alert
+                      severity="warning"
                       className="bg-red-900/50 text-red-200 border border-red-700 rounded-lg"
                     >
                       Heavy load.
@@ -142,13 +162,15 @@ const SearchWithPagination = () => {
                   <TableCell colSpan={2}>
                     <Box className="flex flex-col items-center py-12 gap-3">
                       <CircularProgress size={40} className="text-purple-500" />
-                      <span className="text-gray-400 font-medium">Loading results...</span>
+                      <span className="text-gray-400 font-medium">
+                        Loading results...
+                      </span>
                     </Box>
                   </TableCell>
                 </TableRow>
               ) : questions.length > 0 ? (
                 questions.map((q, index) => (
-                  <TableRow 
+                  <TableRow
                     key={index}
                     className="border-b border-gray-700 hover:bg-gray-700/50 transition-colors duration-200"
                   >
@@ -164,7 +186,10 @@ const SearchWithPagination = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={2} className="text-center py-12 text-gray-400">
+                  <TableCell
+                    colSpan={2}
+                    className="text-center py-12 text-gray-400"
+                  >
                     No questions found
                   </TableCell>
                 </TableRow>
@@ -176,19 +201,19 @@ const SearchWithPagination = () => {
         {/* Pagination Controls */}
         <div className="flex justify-center items-center gap-6 mt-8">
           <Button
-            onClick={() => setPage(page - 1)}
-            disabled={page === 1}
+            onClick={() => setPage(pageNumber - 1)}
+            disabled={pageNumber === 1}
             className="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white 
                      disabled:bg-gray-800 disabled:text-gray-600 rounded-lg transition-colors"
           >
             Previous
           </Button>
           <span className="text-sm font-medium text-gray-300 bg-gray-800 px-4 py-2 rounded-lg">
-            Page {questions.length === 0 ? 0 : page}
+            Page {questions.length === 0 ? 0 : pageNumber}
           </span>
           <Button
-            onClick={() => setPage(page + 1)}
-            disabled={page === Math.ceil(totalPages / limit)}
+            onClick={() => setPage(pageNumber + 1)}
+            disabled={pageNumber === Math.ceil(totalPages / itemsPerPage)}
             className="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white 
                      disabled:bg-gray-800 disabled:text-gray-600 rounded-lg transition-colors"
           >
@@ -199,6 +224,5 @@ const SearchWithPagination = () => {
     </div>
   );
 };
-
 
 export default SearchWithPagination;
